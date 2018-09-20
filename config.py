@@ -3,11 +3,11 @@ from easydict import EasyDict as edict
 config = edict()
 
 "data and check point directories"
-config.raw_image_dir = '/home/fl4918/FL_deployment/alphatest_imagesGAN_f/train_class'
+config.raw_image_dir = '/home/fl4918/FL_deployment/alphaGAN_f/train_class'
 config.data_tfrecord_dir = '/home/fl4918/FL_deployment/alphaGAN_f/train_class/cifar10_labeled.tfrecord'
 
 # should be 20000 or 50000
-config.num_of_data = 5000
+config.num_of_data = 10000
 
 "optimization"
 config.batch_size = 64

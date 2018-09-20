@@ -256,7 +256,6 @@ def train():
     sess.run(tf.assign(lr_v, lr_init))
     print("Training alpha-GAN with initialized learning rate: %f" % lr_init)
 
-    # CHECK
     img_batch, label_batch = input_batch(filename, batch_size, n_epoch, shuffle_size=50000, is_augment=is_augment)
 
     try:
@@ -276,7 +275,6 @@ def train():
 
             step_time = time.time()
 
-            # CHECK
             imgs, labels = sess.run([img_batch, label_batch])
 
             imgs = np.array(imgs)
@@ -392,8 +390,10 @@ def generate():
         feat_dict = pickle.load(f)
 
     encoded_feats = feat_dict['encoded_feats']
-    predict_label = feat_dict['pred_label']
     image_ids = feat_dict['image_ids']
+
+    # error?
+    predict_label = feat_dict['pred_label']
 
     t_z = tf.placeholder(tf.float32, [None, z_dim], name='test_prior')
     t_pred_label = tf.placeholder(tf.float32, [None, y_dim], name='labels')
@@ -426,7 +426,9 @@ def encode():
                                  name=checkpoints_dir+"/e_train.npz", network=net_e_test)
 
     encoded_feats = None
-    images_dir = './train_samples'
+
+    # Make sure directory is correct
+    images_dir = '/home/fl4918/FL_deployment/alphaGAN_f/train_samples'
 
     image_paths = glob.glob(images_dir+'/*')
 
@@ -450,7 +452,6 @@ def encode():
         start_idx = i*batch_size
         end_idx = (i+1)*batch_size
 
-        # error - IndexError: too many indices for array
         cur_batch = images[start_idx:end_idx, :, :, :]
         cur_encoded_feat = sess.run(z_test, feed_dict={t_image: cur_batch})
         if encoded_feats is None:
@@ -470,10 +471,15 @@ if __name__ == "__main__":
 
         if args.mode == 'train':
             train()
-        elif args.mode == 'gen':
-            generate()
+
         elif args.mode == 'encode':
             encode()
+
+        elif args.mode == 'gen':
+            generate()
+        elif args.mode == 'generate':
+            generate()
+
         else:
             raise Exception('Unknown mode {}'.format(args.mode))
 
