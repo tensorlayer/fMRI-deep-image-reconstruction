@@ -81,11 +81,11 @@ def train():
 
     _, cd_logits_real = code_discriminator(t_z, reuse=True)
 
-    net_d, d_logits_fake1 = discriminator(x_recons, is_train=True, reuse=False)
+    net_d, d_logits_fake1 = discriminator(x_recons,  y=t_label, is_train=True, reuse=False)
 
-    _, d_logits_fake2 = discriminator(x_gen, is_train=True, reuse=True)
+    _, d_logits_fake2 = discriminator(x_gen,  y=t_label, is_train=True, reuse=True)
 
-    _, d_logits_real = discriminator((t_image/127.5)-1, is_train=True, reuse=True)
+    _, d_logits_real = discriminator((t_image/127.5)-1,  y=t_label, is_train=True, reuse=True)
 
     "define test network"
     net_e_test, z_test = encoder((t_image/127.5)-1, resblk=num_of_resblk, z_dim=z_dim, is_train=False, reuse=True)
@@ -355,6 +355,7 @@ def train():
                                   name=checkpoints_dir + '/cd_{}.npz'.format(tl.global_flag['mode']), sess=sess)
 
             if (n_iter + 1) % (num_of_iter_one_epoch * save_every_epoch) == 0:
+
                 # quick evaluation on train set
                 t_label_test = np.zeros((batch_sz, y_dim))
                 out = sess.run(net_g_test.outputs,
@@ -459,6 +460,7 @@ def encode():
         else:
             encoded_feats = np.vstack((encoded_feats, cur_encoded_feat))
 
+    # missing pred_label?
     with open(result_dir + '/encoded_feat.pkl', 'wb') as f:
         pickle.dump({'image_ids': image_ids, 'encoded_feats': encoded_feats}, f)
 
