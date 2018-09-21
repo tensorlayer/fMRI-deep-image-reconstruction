@@ -74,7 +74,8 @@ def encoder(x, resblk=4, z_dim=100, is_train=True, reuse=False):
     return out, out.outputs
 
 
-def generator(z, y, h_dim=128, is_train=True, reuse=False):
+#def generator(z, y, h_dim=128, is_train=True, reuse=False):
+def generator(z, h_dim=128, is_train=True, reuse=False):
     w_init = tf.truncated_normal_initializer(stddev=0.02)
     g_init = tf.truncated_normal_initializer(mean=1.0, stddev=0.02)
 
@@ -87,17 +88,17 @@ def generator(z, y, h_dim=128, is_train=True, reuse=False):
     s2, s4, s8, s16 = int(image_size/2), int(image_size/4), int(image_size/8), int(image_size/16),
 
     # Conditional GAN, adds y value to input layer
-    feat_vec = tf.concat(axis=1, values=[z, y])
+    # feat_vec = tf.concat(axis=1, values=[z, y])
     # Ensures current batch size matches
-    batch_size = feat_vec.get_shape().as_list()[0]
+    # batch_size = feat_vec.get_shape().as_list()[0]
 
-    # batch_size = z.get_shape().as_list()[0]
+    batch_size = z.get_shape().as_list()[0]
 
     with tf.variable_scope('generator', reuse=reuse):
 
         # (100, )
         # net_in = InputLayer(feat_vec, name='g_in')
-        net_in = InputLayer(feat_vec, name='g_in')
+        net_in = InputLayer(z, name='g_in')
 
         # (128, )
         net_in = DenseLayer(net_in, n_units=h_dim, act=tf.identity,
@@ -138,7 +139,8 @@ def generator(z, y, h_dim=128, is_train=True, reuse=False):
         return out, out.outputs
 
 
-def discriminator(x_input, y, is_train=True, reuse=False):
+#def discriminator(x_input, y, is_train=True, reuse=False):
+def discriminator(x_input, is_train=True, reuse=False):
     w_init = tf.truncated_normal_initializer(stddev=0.02)
     gamma_init = tf.truncated_normal_initializer(mean=1.0, stddev=0.02)
 

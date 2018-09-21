@@ -36,4 +36,4 @@ config.num_of_update_for_e_g = 2
 config.h_dim = 128
 config.num_of_resblk = 0
 config.z_dim = 100
-config.y_dim = 10
+# config.y_dim = 10

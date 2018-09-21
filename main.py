@@ -54,7 +54,7 @@ h_dim = config.h_dim
 
 z_dim = config.z_dim
 
-y_dim = config.y_dim
+# y_dim = config.y_dim
 
 g_type = config.generator_type
 
@@ -69,31 +69,38 @@ def train():
     test_images = get_test_images(dir='/home/fl4918/FL_deployment/alphaGAN_f/train_samples')
 
     t_image = tf.placeholder(tf.float32, [None, 64, 64, 3], name='real_image')
-    t_label = tf.placeholder(tf.float32, [None, y_dim], name='label')
+    # t_label = tf.placeholder(tf.float32, [None, y_dim], name='label')
     net_e, z_hat = encoder((t_image/127.5)-1, resblk=num_of_resblk, z_dim=z_dim, is_train=True, reuse=False)
     t_z = tf.placeholder(tf.float32, [None, z_dim], name='z_prior')
 
-    net_g, x_gen = generator(z=t_z, y=t_label, h_dim=h_dim, is_train=True, reuse=False)
+    # net_g, x_gen = generator(z=t_z, y=t_label, h_dim=h_dim, is_train=True, reuse=False)
+    net_g, x_gen = generator(z=t_z, h_dim=h_dim, is_train=True, reuse=False)
 
-    _, x_recons = generator(z=z_hat, y=t_label, h_dim=h_dim, is_train=True, reuse=True)
+    # _, x_recons = generator(z=z_hat, y=t_label, h_dim=h_dim, is_train=True, reuse=True)
+    _, x_recons = generator(z=z_hat, h_dim=h_dim, is_train=True, reuse=True)
 
     net_cd, cd_logits_fake = code_discriminator(z_hat, reuse=False)
 
     _, cd_logits_real = code_discriminator(t_z, reuse=True)
 
-    net_d, d_logits_fake1 = discriminator(x_recons,  y=t_label, is_train=True, reuse=False)
+    # net_d, d_logits_fake1 = discriminator(x_recons, y=t_label, is_train=True, reuse=False)
+    net_d, d_logits_fake1 = discriminator(x_recons, is_train=True, reuse=False)
 
-    _, d_logits_fake2 = discriminator(x_gen,  y=t_label, is_train=True, reuse=True)
+    # _, d_logits_fake2 = discriminator(x_gen, y=t_label, is_train=True, reuse=True)
+    _, d_logits_fake2 = discriminator(x_gen, is_train=True, reuse=True)
 
-    _, d_logits_real = discriminator((t_image/127.5)-1,  y=t_label, is_train=True, reuse=True)
+    # _, d_logits_real = discriminator((t_image/127.5)-1, y=t_label, is_train=True, reuse=True)
+    _, d_logits_real = discriminator((t_image/127.5)-1, is_train=True, reuse=True)
 
     "define test network"
     net_e_test, z_test = encoder((t_image/127.5)-1, resblk=num_of_resblk, z_dim=z_dim, is_train=False, reuse=True)
 
-    net_g_test, _ = generator(z=z_test, y=t_label, h_dim=h_dim, is_train=False, reuse=True)
+    # net_g_test, _ = generator(z=z_test, y=t_label, h_dim=h_dim, is_train=False, reuse=True)
+    net_g_test, _ = generator(z=z_test, h_dim=h_dim, is_train=False, reuse=True)
 
     "define another test network to evaluate the generative performance of generator"
-    net_g_test1, _ = generator(z=t_z, y=t_label, h_dim=h_dim, is_train=False, reuse=True)
+    # net_g_test1, _ = generator(z=t_z, y=t_label, h_dim=h_dim, is_train=False, reuse=True)
+    net_g_test1, _ = generator(z=t_z, h_dim=h_dim, is_train=False, reuse=True)
 
     np.random.seed(42)
     sampled_z_test = np.random.normal(0.0, 1.0, [64, z_dim])
@@ -102,7 +109,7 @@ def train():
 
     for i in range(64):
         targets.append(i//8)
-    sampled_y_test = np.eye(y_dim)[targets]
+    # sampled_y_test = np.eye(y_dim)[targets]
 
     "auto encoder loss"
     reconstruction_loss = recons_loss_w*tf.reduce_mean(tf.losses.absolute_difference(
@@ -279,7 +286,7 @@ def train():
 
             imgs = np.array(imgs)
 
-            labels_one_hot = np.eye(y_dim)[labels-1]
+            # labels_one_hot = np.eye(y_dim)[labels-1]
 
             batch_sz = imgs.shape[0]
             "sample a standard normal distribution"
@@ -288,9 +295,13 @@ def train():
             "update encoder and generator multiple times"
             for i in range(num_of_update_for_e_g):
                 "update encoder"
+                """e_summary, err_E_recons_loss, err_E_adversarial_loss, err_E_loss, _ = sess.run(
+                    [e_merge, reconstruction_loss, e_loss1, e_loss, e_optim],
+                    feed_dict={t_image: imgs, t_z: z_prior, t_label: labels_one_hot})"""
+
                 e_summary, err_E_recons_loss, err_E_adversarial_loss, err_E_loss, _ = sess.run(
                     [e_merge, reconstruction_loss, e_loss1, e_loss, e_optim],
-                    feed_dict={t_image: imgs, t_z: z_prior, t_label: labels_one_hot})
+                    feed_dict={t_image: imgs, t_z: z_prior})
 
                 log = "Epoch [%4d/%4d] %6d time: %4.4fs, e_loss: %8f, e_recons_loss: %8f, e_adverse_loss: %8f" % (
                     (n_iter+1)//num_of_iter_one_epoch, n_epoch, n_iter, time.time() - step_time, err_E_loss,
@@ -302,9 +313,12 @@ def train():
                 e_summary_writer.add_summary(e_summary, n_iter*num_of_iter_one_epoch + i)
 
                 "update generator"
+                """g_summary, err_G_recons_loss, err_G_adverse_loss, err_G_gen_loss, err_G_loss, _ = sess.run(
+                    [g_merge, reconstruction_loss, g_loss1, g_loss2, g_loss, g_optim],
+                    feed_dict={t_image: imgs, t_z: z_prior, t_label: labels_one_hot}"""
                 g_summary, err_G_recons_loss, err_G_adverse_loss, err_G_gen_loss, err_G_loss, _ = sess.run(
                     [g_merge, reconstruction_loss, g_loss1, g_loss2, g_loss, g_optim],
-                    feed_dict={t_image: imgs, t_z: z_prior, t_label: labels_one_hot}
+                    feed_dict={t_image: imgs, t_z: z_prior}
                 )
 
                 log = "Epoch [%4d/%4d] %6d time: %4.4fs, g_loss: %8f, g_recons_loss: %8f, g_adverse_loss: %8f, g_gen_loss: %8f" % (
@@ -317,9 +331,12 @@ def train():
                 g_summary_writer.add_summary(g_summary, n_iter*num_of_iter_one_epoch + i)
 
             "update discriminator"
+            """d_summary, err_D_real_loss, err_D_recons_loss, err_D_gen_loss, err_D_loss, _ = \
+                sess.run([d_merge, d_loss3, d_loss1, d_loss2, d_loss, d_optim],
+                         feed_dict={t_image: imgs, t_z: z_prior, t_label: labels_one_hot})"""
             d_summary, err_D_real_loss, err_D_recons_loss, err_D_gen_loss, err_D_loss, _ = \
                 sess.run([d_merge, d_loss3, d_loss1, d_loss2, d_loss, d_optim],
-                         feed_dict={t_image: imgs, t_z: z_prior, t_label: labels_one_hot})
+                         feed_dict={t_image: imgs, t_z: z_prior})
 
             log = "Epoch [%4d/%4d] %6d time: %4.4fs, d_loss: %8f, d_recons_loss: %8f, d_gen_loss: %8f, d_real_loss: %8f" % (
                 (n_iter+1)//num_of_iter_one_epoch, n_epoch,n_iter, time.time() - step_time, err_D_loss, err_D_recons_loss,
@@ -330,10 +347,12 @@ def train():
             d_summary_writer.add_summary(d_summary, n_iter)
 
             "update code discriminator"
-
+            """cd_summary, err_CD_fake_loss, err_CD_real_loss, err_CD_loss, _ = \
+                sess.run([cd_merge, cd_loss1, cd_loss2, cd_loss, cd_optim],
+                         feed_dict={t_image: imgs, t_z: z_prior, t_label: labels_one_hot})"""
             cd_summary, err_CD_fake_loss, err_CD_real_loss, err_CD_loss, _ = \
                 sess.run([cd_merge, cd_loss1, cd_loss2, cd_loss, cd_optim],
-                         feed_dict={t_image: imgs, t_z: z_prior, t_label: labels_one_hot})
+                         feed_dict={t_image: imgs, t_z: z_prior})
 
             log = "Epoch [%4d/%4d] %6d time: %4.4fs, cd_loss: %8f, cd_fake_loss: %8f, cd_real_loss: %8f" % (
                 (n_iter+1)//num_of_iter_one_epoch, n_epoch, n_iter, time.time() - step_time, err_CD_loss, err_CD_fake_loss,
@@ -357,9 +376,9 @@ def train():
             if (n_iter + 1) % (num_of_iter_one_epoch * save_every_epoch) == 0:
 
                 # quick evaluation on train set
-                t_label_test = np.zeros((batch_sz, y_dim))
-                out = sess.run(net_g_test.outputs,
-                               {t_image: test_images, t_label: t_label_test})
+                # t_label_test = np.zeros((batch_sz, y_dim))
+                # out = sess.run(net_g_test.outputs, {t_image: test_images, t_label: t_label_test})
+                out = sess.run(net_g_test.outputs, {t_image: test_images})
                 out = (out+1)*127.5
                 print("reconstructed image:", out.shape, out.min(), out.max())
                 print("[*] save images")
@@ -367,7 +386,8 @@ def train():
                                    '/train_%d.png' % ((n_iter + 1) // num_of_iter_one_epoch))
 
                 # quick evaluation on generative performance of generator
-                out1 = sess.run(net_g_test1.outputs, feed_dict={t_z: sampled_z_test, t_label: sampled_y_test})
+                # out1 = sess.run(net_g_test1.outputs, feed_dict={t_z: sampled_z_test, t_label: sampled_y_test})
+                out1 = sess.run(net_g_test1.outputs, feed_dict={t_z: sampled_z_test})
                 out1 = (out1+1)*127.5
                 print("generated image:", out1.shape, out1.min(), out1.max())
                 print("[*] save images")
@@ -381,50 +401,15 @@ def train():
         pass
 
 
-def generate():
-    sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_placement=False))
-    result_dir = './results/recons'
-    checkpoints_dir = "./checkpoints"
-    tl.files.exists_or_mkdir(result_dir)
-
-    with open('./results/encoded_feat.pkl', 'rb') as f:
-        feat_dict = pickle.load(f)
-
-    encoded_feats = feat_dict['encoded_feats']
-    image_ids = feat_dict['image_ids']
-
-    # error?
-    predict_label = feat_dict['pred_label']
-
-    t_z = tf.placeholder(tf.float32, [None, z_dim], name='test_prior')
-    t_pred_label = tf.placeholder(tf.float32, [None, y_dim], name='labels')
-    net_g_test, _ = generator(z=t_z, y=t_pred_label, is_train=False, reuse=False)
-
-    tl.layers.initialize_global_variables(sess)
-
-    tl.files.load_and_assign_npz(sess=sess,
-                                 name=checkpoints_dir+"/g_train.npz",
-                                 network=net_g_test)
-    for i in range(len(image_ids)):
-        cur_feat = np.reshape(encoded_feats[i, :], (-1, z_dim))
-        cur_pred_label = np.reshape(predict_label[i, :], (-1, y_dim))
-        out = sess.run(net_g_test.outputs, feed_dict={t_z: cur_feat, t_pred_label: cur_pred_label})
-        out = (out+1)*127.5
-        out = np.reshape(out, (64, 64, 3))
-        misc.imsave(result_dir+'/'+image_ids[i], out.astype(np.uint8))
-
-
 def encode():
     sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_placement=False))
     result_dir = './results'
     checkpoints_dir = "./checkpoints"
     tl.files.exists_or_mkdir(result_dir)
     t_image = tf.placeholder(tf.float32, [None, 64, 64, 3], name='Input_images')
-    net_e_test, z_test = encoder((t_image/127.5)-1, resblk=num_of_resblk,
-                                 z_dim=z_dim, is_train=False, reuse=False)
+    net_e_test, z_test = encoder((t_image/127.5)-1, resblk=num_of_resblk, z_dim=z_dim, is_train=False, reuse=False)
     tl.layers.initialize_global_variables(sess)
-    tl.files.load_and_assign_npz(sess=sess,
-                                 name=checkpoints_dir+"/e_train.npz", network=net_e_test)
+    tl.files.load_and_assign_npz(sess=sess, name=checkpoints_dir+"/e_train.npz", network=net_e_test)
 
     encoded_feats = None
 
@@ -453,16 +438,50 @@ def encode():
         start_idx = i*batch_size
         end_idx = (i+1)*batch_size
 
-        cur_batch = images[start_idx:end_idx, :, :, :]
+        cur_batch = images[start_idx:end_idx, :, :]
         cur_encoded_feat = sess.run(z_test, feed_dict={t_image: cur_batch})
         if encoded_feats is None:
             encoded_feats = cur_encoded_feat
         else:
             encoded_feats = np.vstack((encoded_feats, cur_encoded_feat))
 
-    # missing pred_label?
+    # missing pred_label
+
     with open(result_dir + '/encoded_feat.pkl', 'wb') as f:
         pickle.dump({'image_ids': image_ids, 'encoded_feats': encoded_feats}, f)
+
+
+def generate():
+    sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_placement=False))
+    result_dir = './results/recons'
+    checkpoints_dir = "./checkpoints"
+    tl.files.exists_or_mkdir(result_dir)
+
+    with open('./results/encoded_feat.pkl', 'rb') as f:
+        feat_dict = pickle.load(f)
+
+    encoded_feats = feat_dict['encoded_feats']
+    image_ids = feat_dict['image_ids']
+
+    # predict_label = feat_dict['pred_label']
+
+    t_z = tf.placeholder(tf.float32, [None, z_dim], name='test_prior')
+    # t_pred_label = tf.placeholder(tf.float32, [None, y_dim], name='labels')
+    # net_g_test, _ = generator(z=t_z, y=t_pred_label, is_train=False, reuse=False)
+    net_g_test, _ = generator(z=t_z, is_train=False, reuse=False)
+
+    tl.layers.initialize_global_variables(sess)
+
+    tl.files.load_and_assign_npz(sess=sess, name=checkpoints_dir+"/g_train.npz", network=net_g_test)
+
+    for i in range(len(image_ids)):
+        cur_feat = np.reshape(encoded_feats[i, :], (-1, z_dim))
+        # cur_pred_label = np.reshape(predict_label[i, :], (-1, y_dim))
+        # out = sess.run(net_g_test.outputs, feed_dict={t_z: cur_feat, t_pred_label: cur_pred_label})
+        out = sess.run(net_g_test.outputs, feed_dict={t_z: cur_feat})
+        out = (out+1)*127.5
+        out = np.reshape(out, (64, 64, 3))
+        misc.imsave(result_dir+'/'+image_ids[i], out.astype(np.uint8))
 
 
 if __name__ == "__main__":
